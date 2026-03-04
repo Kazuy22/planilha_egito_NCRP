@@ -1,0 +1,706 @@
+<!-- PARTE 1: ESTRUTURA E ESTILO -->
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planilha EGITO_NCRP</title>
+    
+    <!-- Bibliotecas Externas -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net"></script>
+    <script src="https://cdnjs.cloudflare.com"></script>
+    
+    <!-- Firebase Compat (Essencial para o seu JS) -->
+    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com"></script>
+
+    <style>
+        /* Seus estilos CSS permanecem os mesmos, estão excelentes */
+        :root { --primary: #1a1a1a; --accent: #f39c12; --danger: #c0392b; --success: #27ae60; --info: #2980b9; --dark: #121212; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://cdn.discordapp.com/attachments/1438240224823083081/1477755667837223117/PLANILHA.png?ex=69a5eab6&is=69a49936&hm=3ca8b91d69276f69f190cc97a5134cebe489343a8d2af536a1306ec95b201443&');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            margin: 0; color: white; overflow-x: hidden; 
+        }
+        #loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #333; border-top: 5px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        .login-box { background: rgba(30, 30, 30, 0.9); padding: 30px; border-radius: 12px; width: 350px; text-align: center; border: 1px solid #444; box-shadow: 0 10px 25px rgba(0,0,0,0.7); backdrop-filter: blur(5px); }
+        input { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #333; background: #2b2b2b; color: white; margin-bottom: 10px; box-sizing: border-box; outline: none; }
+        .role-option { background: #333; padding: 10px; border-radius: 6px; cursor: pointer; margin-bottom: 5px; border: 1px solid transparent; transition: 0.3s; }
+        .role-option.active { border-color: var(--accent); background: #3d2e10; color: var(--accent); font-weight: bold; }
+        #dashboard, #history-page { display: none; padding: 20px; animation: fadeIn 0.5s; }
+        header { display: flex; justify-content: space-between; align-items: center; background: rgba(30, 30, 30, 0.9); padding: 15px 25px; border-radius: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--accent); backdrop-filter: blur(5px); }
+        .table-container { background: rgba(30, 30, 30, 0.85); padding: 20px; border-radius: 10px; overflow-x: auto; position: relative; backdrop-filter: blur(5px); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #444; padding: 12px; text-align: center; font-size: 13px; font-weight: bold; color: white; }
+        th { background: rgba(37, 37, 37, 0.9); color: var(--accent); text-transform: uppercase; }
+        .btn-action { color: white; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 5px; margin-bottom: 5px; transition: 0.3s; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-green { background: var(--success); } .btn-blue { background: var(--info); } .btn-yellow { background: var(--accent); color: #000; } .btn-red { background: var(--danger); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<!-- PARTE 2: INTERFACE (BODY) -->
+<body>
+    <div id="loader"><div class="spinner"></div><span id="loader-text">Processando...</span></div>
+
+    <!-- TELA DE LOGIN -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h2 style="color:var(--accent); margin-top: 0;">FAMÍLIA GESTÃO</h2>
+            <input type="text" id="user-nick" placeholder="Seu Nick">
+            <input type="number" id="user-city-id" placeholder="ID da Cidade">
+            <div id="role-selector" style="margin: 15px 0;">
+                <div class="role-option" onclick="selectRole(this, 'Responsável')">Responsável</div>
+                <div class="role-option" onclick="selectRole(this, 'Auxiliar')">Auxiliar</div>
+            </div>
+            <label style="color:#888; font-size: 13px; cursor: pointer; display: block; margin-bottom: 15px;">
+                <input type="checkbox" id="remember-box"> Lembrar minha conta
+            </label>
+            <button class="btn-action btn-yellow" style="width:100%; justify-content: center;" onclick="login()">Entrar no Sistema</button>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard">
+        <header>
+            <div id="welcome-msg">Painel</div>
+            <div style="display: flex; gap: 5px;">
+                <input type="file" id="xlsx-file" accept=".xlsx, .xls" style="display:none" onchange="importXLSX(this)">
+                <button class="btn-action btn-green" onclick="document.getElementById('xlsx-file').click()">📤 Importar XLSX</button>
+                <button class="btn-action btn-red" onclick="location.reload()">Sair</button>
+            </div>
+        </header>
+
+        <div class="table-container">
+            <div style="margin-bottom:20px;">
+                <button class="btn-action btn-green" onclick="addRow()">➕ Novo Membro</button>
+                <button class="btn-action btn-yellow" onclick="refreshAndSync()">🔄 Salvar na Nuvem</button>
+                <button class="btn-action btn-blue" onclick="downloadXLSX()">📥 Baixar Planilha (.xlsx)</button>
+                <button class="btn-action btn-red" onclick="clearTable()">🗑️ Limpar Tudo</button>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>Cor</th><th>Nick</th><th>ID Cidade</th><th>Cargo</th><th>Ações</th></tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+    // Configurações do Firebase (Puxando do seu código original)
+    const firebaseConfig = {
+        apiKey: "AIzaSyCk_NI_zL76u4X7kV7QH6T-XDMBugE2VUQ",
+        authDomain: "egito-planilhas.firebaseapp.com",
+        databaseURL: "https://egito-planilhas-default-rtdb.firebaseio.com",
+        projectId: "egito-planilhas",
+        storageBucket: "egito-planilhas.firebasestorage.app",
+        messagingSenderId: "612959808834",
+        appId: "1:612959808834:web:3066294a4b4258786cecdb"
+    };
+
+    // Inicializa Firebase se não estiver iniciado
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Variáveis Globais (Mantendo sua estrutura original)
+    let familyData = []; 
+    let historyData = []; 
+    let currentEditing = { i: null, field: null, el: null };
+    let selectedRole = "";
+
+    const listaCargos = [
+        "Fundador(0)📜", "Dono do Morro (01)", "Braço Direito (02)", "Chefe do Morro (03)", 
+        "Conselheiro", "Gerente Geral", "Gerente", "Sintonia", "Chefe de Operações", 
+        "Segurança da Favela", "Linha de Frente", "Atirador", "Pistoleiro", "Novato", 
+        "Frente", "Frente da boca", "Traficante", "Vapor", "Fogueteiro", "Aviãozinho", 
+        "Olheiro", "Cria"
+    ];
+
+    // O window.onload agora apenas prepara o login, o carregamento de dados 
+    // será feito após o login via Firebase Realtime.
+    window.onload = () => {
+        const saved = JSON.parse(localStorage.getItem('loginData'));
+        if(saved) {
+            document.getElementById('user-nick').value = saved.nick;
+            document.getElementById('user-city-id').value = saved.id;
+            document.getElementById('remember-box').checked = true;
+        }
+    };
+        // Filtro de Busca (Procurar por Nick ou ID) - Mantendo sua lógica original
+        function filterTable() {
+            const searchTerm = document.getElementById('table-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#table-body tr');
+            
+            rows.forEach(row => {
+                const nick = row.cells[0].innerText.toLowerCase();
+                const id = row.cells[1].innerText.toLowerCase();
+                
+                if (nick.includes(searchTerm) || id.includes(searchTerm)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        // Sincronização com a Nuvem (Firebase)
+        // Substituindo o localStorage.getItem por db.ref().once
+        function refreshAndSync() {
+            actionWithLoading(() => {
+                db.ref('membros').once('value').then((snapshot) => {
+                    const data = snapshot.val();
+                    familyData = data ? (Array.isArray(data) ? data : Object.values(data)) : [];
+                    renderTable();
+                    document.getElementById('table-search').value = "";
+                });
+            }, "Sincronizando com a Nuvem...", "refresh");
+        }
+
+        // Sistema de Feedback Visual (Loading)
+        function actionWithLoading(callback, message, type = '') {
+            const loader = document.getElementById('loader');
+            const loaderText = document.getElementById('loader-text');
+            
+            if(loaderText) loaderText.innerText = message;
+            loader.style.display = 'flex';
+            
+            setTimeout(() => {
+                callback();
+                loader.style.display = 'none';
+                
+                if(type === 'refresh') showNotify("Dados atualizados da Nuvem!", "#2980b9");
+                else if(type === 'sort') showNotify("Hierarquia organizada!", "#f39c12");
+            }, 600);
+        }
+        // Sistema de Notificações Toastify - Preservando suas cores originais
+        function showNotify(msg, color) {
+            Toastify({ 
+                text: msg, 
+                duration: 3000, 
+                position: "right", 
+                style: { background: color } 
+            }).showToast();
+        }
+
+        // Seleção de Cargo na Tela de Login - Visual Ativo
+        function selectRole(el, role) {
+            document.querySelectorAll('.role-option').forEach(o => o.classList.remove('active'));
+            el.classList.add('active');
+            selectedRole = role;
+        }
+
+        // Lógica de Login e Ativação da Nuvem
+        function login() {
+            const nick = document.getElementById('user-nick').value;
+            const cityId = document.getElementById('user-city-id').value;
+
+            if(!nick || !selectedRole) return alert("Preencha o Nick e selecione o Cargo!");
+
+            // Persistência Local (Lembrar conta)
+            if(document.getElementById('remember-box').checked) {
+                localStorage.setItem('loginData', JSON.stringify({
+                    nick: nick, 
+                    id: cityId, 
+                    role: selectedRole
+                }));
+            }
+
+            // Troca de Telas
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            document.getElementById('welcome-msg').innerHTML = `Logado como: <span style="color:var(--accent)">${nick}</span> | Cargo: ${selectedRole}`;
+
+            // ATIVAÇÃO DO FIREBASE (Ouvir em tempo real)
+            // Agora, qualquer mudança feita por outro ADM aparecerá na sua tela na hora
+            db.ref('membros').on('value', (snapshot) => {
+                const data = snapshot.val();
+                familyData = data ? (Array.isArray(data) ? data : Object.values(data)) : [];
+                renderTable();
+            });
+
+            showNotify(`Bem-vindo, ${nick}! Conectado à Nuvem Egito.`, "#27ae60");
+        }
+        // Renderização da Tabela - Mantendo seu Sistema de Cores e Edição Direta
+        function renderTable() {
+            const body = document.getElementById('table-body');
+            if (!body) return;
+            body.innerHTML = '';
+
+            familyData.forEach((m, i) => {
+                const tr = document.createElement('tr');
+                
+                // Estrutura das células com suporte a Cores (bg) e Edição (contenteditable)
+                tr.innerHTML = `
+                    <td contenteditable="true" style="background-color:${m.bg?.nick || 'transparent'}" 
+                        onclick="showColors(event, ${i}, 'nick')">${m.nick || ''}</td>
+                    
+                    <td contenteditable="true" style="background-color:${m.bg?.passaport || 'transparent'}" 
+                        onclick="showColors(event, ${i}, 'passaport')">${m.passaport || ''}</td>
+                    
+                    <td>
+                        <select class="select-cargo" onchange="updateCargo(${i}, this.value)" 
+                                style="background-color:${m.bg?.cargo || 'transparent'}" onclick="showColors(event, ${i}, 'cargo')">
+                            ${listaCargos.map(cargo => `<option value="${cargo}" ${m.cargo === cargo ? 'selected' : ''}>${cargo}</option>`).join('')}
+                        </select>
+                    </td>
+                    
+                    <td>
+                        <select onchange="updateData(${i}, 'meta', this.value)" style="background:#222; color:white; border:none;">
+                            <option value="PAGA" ${m.meta === 'PAGA' ? 'selected' : ''}>PAGA</option>
+                            <option value="PEDENTE" ${m.meta === 'PEDENTE' ? 'selected' : ''}>PEDENTE</option>
+                            <option value="ELITE" ${m.meta === 'ELITE' ? 'selected' : ''}>ELITE</option>
+                            <option value="FARME" ${m.meta === 'FARME' ? 'selected' : ''}>FARME</option>
+                            <option value="ALTO COMANDO" ${m.meta === 'ALTO COMANDO' ? 'selected' : ''}>ALTO COMANDO</option>
+                            <option value="GERÊNCIA" ${m.meta === 'GERÊNCIA' ? 'selected' : ''}>GERÊNCIA</option>
+                            <option value="RESP_REC" ${m.meta === 'RESP_REC' ? 'selected' : ''}>RESP_REC</option>
+                            <option value="AUX_REC" ${m.meta === 'AUX_REC' ? 'selected' : ''}>AUX_REC</option> 
+                        </select>
+                    </td>
+                    
+                    <td contenteditable="true" style="background-color:${m.bg?.resultado || 'transparent'}" 
+                        onclick="showColors(event, ${i}, 'resultado')">${m.resultado || ''}</td>
+                    
+                    <td>
+                        <input type="checkbox" ${m.reuniao === 'Sim' ? 'checked' : ''} 
+                               onchange="updateData(${i}, 'reuniao', this.checked ? 'Sim' : 'Não')">
+                    </td>
+                    
+                    <td contenteditable="true" style="background-color:${m.bg?.obs || 'transparent'}" 
+                        onclick="showColors(event, ${i}, 'obs')">${m.obs || ''}</td>
+                    
+                    <td>
+                        <button onclick="deleteRow(${i})" style="color:var(--danger); background:none; border:none; cursor:pointer; font-size:16px;">✖</button>
+                    </td>
+                `;
+
+                // Ativando o monitoramento de edição (Blur) para cada célula de texto
+                const editableCells = tr.querySelectorAll('[contenteditable]');
+                editableCells.forEach(cell => {
+                    cell.addEventListener('blur', () => {
+                        const cellIndex = cell.cellIndex;
+                        // Mapeamento: 0=Nick, 1=Passaport, 4=Resultado, 6=Obs
+                        const fields = ['nick', 'passaport', '', '', 'resultado', '', 'obs'];
+                        if (fields[cellIndex]) {
+                            updateData(i, fields[cellIndex], cell.innerText);
+                        }
+                    });
+                });
+                
+                body.appendChild(tr);
+            });
+        }
+        // Função de Download - Mantendo sua lógica de limpeza para relatórios
+        function downloadFile(type) {
+            if (familyData.length === 0) return showNotify("Não há dados para exportar!", "#c0392b");
+
+            // Mapeando apenas os dados necessários para o relatório (limpando o objeto de cores bg)
+            const dataToExport = familyData.map(m => ({
+                NICK: m.nick || "Sem Nome",
+                ID: m.passaport || "0",
+                CARGO: m.cargo || "Cria",
+                META: m.meta || "PEDENTE",
+                RESULTADO: m.resultado || "0",
+                REUNIAO: m.reuniao || "Não",
+                OBS: m.obs || "-"
+            }));
+
+            // Exportação para Excel (.xlsx) usando SheetJS
+            if (type === 'xlsx') {
+                const ws = XLSX.utils.json_to_sheet(dataToExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Egito_Membros");
+                
+                // Gera o arquivo com o nome da família
+                XLSX.writeFile(wb, "Planilha_Egito_Gestao.xlsx");
+                showNotify("Excel gerado com sucesso!", "#1d6f42");
+            } 
+            // Exportação para CSV (Formato leve de texto)
+            else {
+                const csvRows = [["NICK", "ID", "CARGO", "META", "RESULTADO", "REUNIAO", "OBS"]];
+                dataToExport.forEach(obj => csvRows.push(Object.values(obj)));
+                
+                // Processamento de caracteres para UTF-8 (mantendo acentos)
+                let csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
+                const encodedUri = encodeURI(csvContent);
+                
+                // Criação do link invisível para download automático
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "Planilha_Egito_Backup.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showNotify("CSV gerado com sucesso!", "#27ae60");
+            }
+        }
+        // Gerador de Link de Compartilhamento via Base64 - Backup Rápido
+        function generateShareLink() {
+            if (familyData.length === 0) return alert("Não há dados para compartilhar!");
+            
+            try {
+                const dataStr = JSON.stringify(familyData);
+                // Converte os dados da nuvem em uma string segura para URL (Base64)
+                const base64Data = btoa(unescape(encodeURIComponent(dataStr)));
+                const shareLink = window.location.href.split('?')[0] + "?data=" + base64Data;
+                
+                navigator.clipboard.writeText(shareLink).then(() => {
+                    showNotify("Link de backup copiado!", "#8e44ad");
+                }).catch(err => {
+                    alert("Erro ao copiar link: " + err);
+                });
+            } catch (e) {
+                alert("Erro ao processar dados: " + e.message);
+            }
+        }
+
+        // Importação de Excel (.xlsx) - Convertendo para Nuvem
+        function importXLSX(input) {
+            if (!input.files[0]) return;
+            
+            const file = input.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                if (jsonData.length > 0) {
+                    const novosMembros = [];
+                    
+                    jsonData.forEach((row, index) => {
+                        // Pula o cabeçalho (index 0) e linhas vazias
+                        if (index === 0 || !row[0]) return;
+                        
+                        novosMembros.push({
+                            nick: String(row[0] || "NOME").toUpperCase().trim(),
+                            passaport: String(row[1] || "0").trim(),
+                            cargo: String(row[2] || "Cria").trim(),
+                            meta: String(row[3] || "PEDENTE").toUpperCase().trim(),
+                            resultado: String(row[4] || "-").trim(),
+                            reuniao: (row[5] && (String(row[5]).toUpperCase() === "SIM" || String(row[5]).toUpperCase() === "X")) ? "Sim" : "Não",
+                            obs: String(row[6] || "").trim(),
+                            bg: {} // Reseta as cores na importação para padrão
+                        });
+                    });
+
+                    if (confirm(`Deseja importar ${novosMembros.length} membros? Isso substituirá a lista atual na NUVEM.`)) {
+                        familyData = novosMembros;
+                        save(); // O save() agora enviará para o Firebase
+                        renderTable();
+                        showNotify("Dados importados e salvos na Nuvem!", "#1d6f42");
+                    }
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        // Importação de CSV - Adaptada para sincronizar com a Nuvem
+        function importCSV(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const lines = e.target.result.split('\n');
+                const novosMembros = [];
+
+                lines.forEach((line, index) => {
+                    // Pula o cabeçalho ou linhas vazias
+                    if (index === 0 || line.trim() === "") return;
+                    const cols = line.split(',');
+                    
+                    if(cols.length >= 2) {
+                        novosMembros.push({
+                            nick: (cols[0] || "NOME").trim().toUpperCase(),
+                            passaport: (cols[1] || "0").trim(),
+                            cargo: (cols[2] || "Cria").trim(),
+                            meta: (cols[3] || "PEDENTE").trim().toUpperCase(),
+                            resultado: (cols[4] || "-").trim(),
+                            reuniao: (cols[5] && (cols[5].trim().toUpperCase() === "X" || cols[5].trim().toUpperCase() === "SIM")) ? "Sim" : "Não",
+                            obs: (cols[6] || "").trim(),
+                            bg: {} // Cores limpas na importação
+                        });
+                    }
+                });
+
+                if (confirm(`Deseja importar ${novosMembros.length} membros via CSV para a NUVEM?`)) {
+                    familyData = novosMembros;
+                    save(); // Envia para o Firebase
+                    renderTable();
+                    showNotify("CSV importado e sincronizado!", "#27ae60");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Fechar Semana - Move os dados atuais para o Histórico na Nuvem
+        function archiveCurrent() {
+            if(familyData.length === 0) return alert("Não há dados para arquivar!");
+            if(!confirm("Deseja fechar a semana? Os dados atuais serão salvos no HISTÓRICO da Nuvem e as metas serão resetadas.")) return;
+
+            const archiveDate = new Date().toLocaleString('pt-BR');
+            const snapshotSemana = JSON.parse(JSON.stringify(familyData));
+
+            // 1. Salva no histórico da Nuvem (Firebase /historico)
+            const historyRef = db.ref('historico').push();
+            historyRef.set({
+                date: archiveDate,
+                data: snapshotSemana
+            }).then(() => {
+                // 2. Reset Inteligente: Mantém Nicks/IDs mas zera Metas/Resultados
+                familyData = familyData.map(m => ({
+                    ...m, 
+                    meta: "PEDENTE", 
+                    resultado: "-", 
+                    reuniao: "Não", 
+                    obs: "", 
+                    bg: {} 
+                }));
+
+                save(); // Atualiza a planilha principal na Nuvem
+                renderTable();
+                showNotify("Semana arquivada com sucesso na Nuvem!", "#2980b9");
+            }).catch(err => {
+                alert("Erro ao arquivar: " + err.message);
+            });
+        }
+        // ATUALIZAÇÃO DE CARGO - Sincroniza a mudança de cargo na hora
+        function updateCargo(i, v) { 
+            familyData[i].cargo = v; 
+            save(); // Envia a alteração para todos os outros usuários
+        }
+        
+        // ORGANIZAR TABELA - Ordena pela hierarquia da listaCargos (Fundador ao Cria)
+        function organizeTable() { 
+            actionWithLoading(() => {
+                familyData.sort((a,b) => {
+                    let idxA = listaCargos.indexOf(a.cargo);
+                    let idxB = listaCargos.indexOf(b.cargo);
+                    // Quem não está na lista (cargos manuais) vai para o fim (999)
+                    return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+                }); 
+                save(); 
+                renderTable(); 
+            }, "Organizando Hierarquia...", "sort");
+        }
+
+        // ATUALIZAÇÃO DE DADOS GERAIS (Nick, ID, Meta, etc.)
+        function updateData(i, f, v) { 
+            familyData[i][f] = v; 
+            save(); 
+        }
+
+        // --- FUNÇÃO CENTRAL DE SALVAMENTO (NUVEM) ---
+        // Substituímos localStorage.setItem por db.ref().set()
+        function save() { 
+            db.ref('membros').set(familyData).then(() => {
+                // Sincronização silenciosa (sem toast toda hora para não poluir)
+                console.log("Dados sincronizados na Nuvem Egito.");
+            }).catch(err => {
+                showNotify("Erro ao salvar na Nuvem!", "#c0392b");
+                console.error("Erro Firebase:", err);
+            });
+        }
+
+        // CRUD BÁSICO NA NUVEM
+        function addRow() { 
+            const novoMembro = {
+                nick: "NOME", 
+                passaport: "0", 
+                cargo: "Cria", 
+                meta: "PEDENTE", 
+                resultado: "-", 
+                reuniao: "Não", 
+                obs: "", 
+                bg: {}
+            };
+            familyData.push(novoMembro); 
+            save(); 
+            renderTable(); 
+            showNotify("Membro adicionado!", "#27ae60");
+        }
+
+        function deleteRow(i) { 
+            if(confirm(`Deseja remover ${familyData[i].nick} da Nuvem?`)) { 
+                familyData.splice(i, 1); 
+                save(); 
+                renderTable(); 
+                showNotify("Membro removido!", "#c0392b");
+            }
+        }
+        
+        // NAVEGAÇÃO ENTRE PAINEL E HISTÓRICO
+        function toggleHistory() {
+            const d = document.getElementById('dashboard');
+            const h = document.getElementById('history-page');
+            
+            if(d.style.display === 'block' || d.style.display === '') {
+                d.style.display = 'none'; 
+                h.style.display = 'block'; 
+                renderHistory(); // Função que veremos na Parte 9
+            } else {
+                d.style.display = 'block'; 
+                h.style.display = 'none';
+            }
+        }
+        // RENDERIZAÇÃO DO HISTÓRICO - Puxando da Nuvem (Firebase /historico)
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            if (!list) return;
+
+            // Busca os arquivos de histórico salvos no Firebase
+            db.ref('historico').once('value').then((snapshot) => {
+                const data = snapshot.val();
+                
+                if (!data) {
+                    list.innerHTML = '<p style="text-align:center; color:#888; padding:20px;">Nenhum histórico salvo na Nuvem.</p>';
+                    return;
+                }
+
+                // Transforma o objeto do Firebase em array e inverte (mais recente primeiro)
+                const historyArray = Object.keys(data).map(key => ({
+                    id: key,
+                    date: data[key].date,
+                    data: data[key].data
+                })).reverse();
+
+                list.innerHTML = historyArray.map((e, i) => `
+                    <div style="background:rgba(37,37,37,0.9); padding:15px; margin-bottom:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border-left: 4px solid var(--accent); backdrop-filter:blur(5px);">
+                        <span>📅 <b>${e.date}</b> | 👥 ${e.data ? e.data.length : 0} Membros</span>
+                        <div>
+                            <button class="btn-action btn-blue" onclick="viewBackup('${e.id}')">👁️ Ver</button>
+                            <button class="btn-action btn-yellow" onclick="restore('${e.id}')">🔄 Restaurar</button>
+                            <button class="btn-action btn-red" onclick="deleteHistory('${e.id}')">🗑️ Apagar</button>
+                        </div>
+                    </div>
+                `).join('');
+            }).catch(err => {
+                list.innerHTML = '<p style="text-align:center; color:red;">Erro ao carregar histórico da Nuvem.</p>';
+            });
+        }
+
+        // RESTAURAR BACKUP DA NUVEM - Substitui a planilha atual por uma antiga
+        function restore(id) { 
+            if(confirm("Deseja restaurar este backup da Nuvem? Os dados atuais serão substituídos.")) { 
+                actionWithLoading(() => {
+                    db.ref(`historico/${id}`).once('value').then((snapshot) => {
+                        const backup = snapshot.val();
+                        if(backup && backup.data) {
+                            familyData = JSON.parse(JSON.stringify(backup.data));
+                            save(); // Atualiza a planilha principal na Nuvem para todos
+                            renderTable();
+                            toggleHistory(); // Volta para o Dashboard
+                            showNotify("Backup restaurado na Nuvem!", "#f39c12");
+                        }
+                    });
+                }, "Restaurando Backup...");
+            }
+        }
+
+        // APAGAR HISTÓRICO - Remove o backup permanentemente da Nuvem
+        function deleteHistory(id) {
+            if(confirm("Apagar este registro de histórico da Nuvem permanentemente?")) {
+                db.ref(`historico/${id}`).remove().then(() => {
+                    renderHistory(); // Recarrega a lista
+                    showNotify("Histórico removido da Nuvem!", "#c0392b");
+                });
+            }
+        }
+        // LIMPAR TUDO - Reseta a planilha inteira na Nuvem (Cuidado!)
+        function clearTable() { 
+            if(confirm("ATENÇÃO: Deseja apagar TODOS os membros da Nuvem permanentemente?")) { 
+                familyData = []; 
+                save(); 
+                renderTable(); 
+                showNotify("Planilha da Nuvem resetada!", "#c0392b");
+            }
+        }
+        
+        // EXIBIR SELETOR DE CORES - Posicionamento dinâmico
+        function showColors(e, i, field) {
+            // Define qual célula e membro estão sendo editados
+            currentEditing = { i, field, el: e.target };
+            
+            const p = document.getElementById('color-picker');
+            if (p) {
+                p.style.display = 'grid'; 
+                // Posiciona o menu 5px distante do clique para não cobrir o mouse
+                p.style.top = (e.pageY + 5) + 'px'; 
+                p.style.left = (e.pageX + 5) + 'px';
+            }
+            e.stopPropagation(); // Evita fechar o menu no próprio clique
+        }
+        
+        // APLICAR COR NA CÉLULA - Sincroniza o visual com a Nuvem
+        function applyColor(color) {
+            if(currentEditing.el) {
+                // 1. Aplica o visual imediato no navegador
+                currentEditing.el.style.backgroundColor = color;
+                
+                // 2. Garante que o objeto de background (bg) existe no membro
+                if(!familyData[currentEditing.i].bg) {
+                    familyData[currentEditing.i].bg = {};
+                }
+                
+                // 3. Grava a cor na propriedade específica (nick, passaport, cargo, etc.)
+                familyData[currentEditing.i].bg[currentEditing.field] = color;
+                
+                // 4. Sincroniza a nova cor com todos os outros usuários na Nuvem
+                save();
+                
+                // Fecha o seletor após escolher
+                document.getElementById('color-picker').style.display = 'none';
+                showNotify("Cor sincronizada!", color !== 'transparent' ? color : "#555");
+            }
+        }
+
+        // FECHAR MODAL E SELETOR - Interações de clique fora
+        document.onclick = (e) => {
+            const picker = document.getElementById('color-picker');
+            if (picker && !e.target.closest('.color-picker')) {
+                picker.style.display = 'none';
+            }
+        };
+
+        function closeModal() { 
+            const modal = document.getElementById('view-modal');
+            if (modal) modal.style.display = 'none'; 
+        }
+
+        // FUNÇÃO DE VISUALIZAÇÃO DE BACKUP (MODAL)
+        function viewBackup(id) {
+            db.ref(`historico/${id}`).once('value').then((snapshot) => {
+                const backup = snapshot.val();
+                if(backup) {
+                    const modal = document.getElementById('view-modal');
+                    const content = document.getElementById('view-modal-content');
+                    if(modal && content) {
+                        modal.style.display = 'block';
+                        content.innerHTML = `
+                            <h3 style="color:var(--accent)">Backup: ${backup.date}</h3>
+                            <div style="max-height:400px; overflow-y:auto;">
+                                <table style="width:100%; border-collapse:collapse;">
+                                    <thead>
+                                        <tr><th>NICK</th><th>ID</th><th>CARGO</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        ${backup.data.map(m => `
+                                            <tr><td>${m.nick}</td><td>${m.passaport}</td><td>${m.cargo}</td></tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
